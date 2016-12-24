@@ -20,9 +20,9 @@
 
 	  PUBLIC  statline,linenum,statfind,fpointer
 statfind  DB      " Search:",72 dup(" ")
-statline  DB	  " Line:         "
-statfile  DB	  " File:                "
-stathelp  DB	  " Quit: ESC    Move:   PGUP PGDN HOME END "
+statline  DB	  " Line:       "
+statfile  DB	  "File:            "
+stathelp  DB	  "Search:ENTER Quit:ESC Move:  PGUP PGDN HOME END "
 linenum	  DW	  1
 
 ; Variables for	screen handling
@@ -196,7 +196,7 @@ badfile:  @DispStr prompt2		;    else prompt to try	again
 ; Copy file name to status line
 
 opened:	  mov	  si,9Eh		; Load FCB as as source
-	  mov	  di,OFFSET statfile[7]	; Load status line as destination
+	  mov	  di,OFFSET statfile[5]	; Load status line as destination
 	  mov	  al,es:[si]		; Load first byte
 	  inc	  si
 copy:	  mov	  [di],al		; Save and load	bytes until 0
@@ -340,7 +340,18 @@ findk:
 	mov ax ,24
 	jmp fd2
 fd1:mov ax, 23
-fd2:mov rows,ax	
+fd2:mov rows,ax            	
+    mov ax,fpointer     ; 初始化buffer
+fd3: mov si,9
+	cmp ax,0
+    je  fd4
+    dec ax
+    add si,ax
+    mov statfind[si],' '
+    cmp ax,0
+    jne  fd3
+
+fd4:mov fpointer,ax
 	mov ax,0
 	push ax
 	call pager

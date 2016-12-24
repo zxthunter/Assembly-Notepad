@@ -44,7 +44,7 @@ show:	  cld				; Go forward
 ; BinToStr (linenum,OFFSET statline[7])
 
 	  push	  linenum		; Arg 1
-	  mov	  ax,OFFSET statline[7]
+	  mov	  ax,OFFSET statline[6]
 	  push	  ax			; Arg 2
 	  call	  BinToStr		; Convert to string
 
@@ -99,6 +99,8 @@ show1:	  mov	  bx,rows		; Lines	of text
 	  pop	  cx			; Restore line number
 ; 测试
 	  
+	  cmp rows,23
+	  jne notsearch
 	  mov bx,rows
 	  inc bx
 	  sub bx,cx
@@ -106,7 +108,7 @@ show1:	  mov	  bx,rows		; Lines	of text
       push si              ; 传入刚打印的行号首地址
       push ax               ; 传入下一个字符串地址
       call FindStr
-	  
+notsearch:	  
 	 
 ; 测试
 		
@@ -499,7 +501,7 @@ fstr2:  mov     es,sbuffer
 	    repz cmpsb
 	    jnz  fstr1  			; 字符串相等，准备更新高亮  
         
-        mov ax,[bp+10]     
+        mov ax,[bp+10]          ; 计算tab的占位数量
         push ax
         mov ax,[bp+6]
         push ax   
@@ -509,13 +511,17 @@ fstr2:  mov     es,sbuffer
 	    mov ax,[bp+8]          ;打印的行数
 	    push ax
 	    mov ax,[bp+6]
-	    sub ax,[bp+10]
-	    add ax,bx
-	    push ax
+	    sub ax,[bp+10]         ; 计算在这行内的偏移
+	    add ax,bx              ; 加上tab的空格个数
+	    push ax                
 	    mov ax,fpointer
 	    push ax
 	    call HighLight
-	    jmp exitf
+        
+        mov ax,[bp+6]          ; 源字符串向后移动fpointer
+        add ax,fpointer
+        mov [bp+6],ax
+	    jmp fstr3
 	    
         
 			
@@ -525,8 +531,8 @@ fstr1:
  		inc ax
  		mov [bp+6],ax
 
- 		mov ax,[bp+4]
- 		cmp di,ax                   ; 检查到回车则退出
+fstr3: 	mov ax,[bp+4]                ; 是否到达行尾部
+ 		cmp di,ax                   
  		jb fstr2
  		 
 exitf:  pop bx
@@ -542,7 +548,7 @@ FindStr endp
 
 ; 计算es段下某两个字节单元间tab的数量
 ; 参数1：起始偏移，参数2：终止偏移
-; 返回：ax中tab个数
+; 返回：ax中储存tab应**增加**多少占位空格
 CalTab proc
 	push	  bp
 	mov	  	bp,sp
@@ -550,15 +556,21 @@ CalTab proc
 	push    bx
 	mov    ax,0
 	mov    di,[bp+6]
+	mov    [bp+8],di
 ct2:mov   bl, es:[di]
 	cmp   bl,9
 	jne   ct1
-	inc   ax
+	mov   bx,di
+	sub   bx,[bp+8]        ; 求tab在行中的位置
+	add   bx,ax            ; 解决多个tab的问题
+	and   bx,7             ; 将 bx mod 8 
+	sub   bx,8             ; 余数减去8
+	neg   bx               ; 负数变正数	
+	dec   bx               ; 由于是计算增加的占位符，因此减去tab所占的一个单元
+	add   ax,bx
 ct1:inc di
     cmp  di,[bp+4]
     jb   ct2
-    mov  bl,7
-    mul  bl
 ct3:pop bx
     pop di
 	pop bp
